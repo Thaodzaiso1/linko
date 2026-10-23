@@ -1,0 +1,10 @@
+linko-web/node_modules/
+linko-web/dist/
+linko-fastapi/linko-fastapi/.venv/
+linko-fastapi/linko-fastapi/.env
+linko-fastapi/linko-fastapi/*.db
+linko-fastapi/linko-fastapi/*.db-shm
+linko-fastapi/linko-fastapi/*.db-wal
+linko-fastapi/linko-fastapi/backups/
+**/__pycache__/
+**/.pytest_cache/
