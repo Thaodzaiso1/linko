@@ -1,0 +1,7 @@
+
+# File tam va log
+VERIFY_STATUS*.txt
+*.bat
+.env
+__pycache__/
+*.pyc
