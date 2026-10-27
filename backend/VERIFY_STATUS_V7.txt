@@ -1,0 +1,22 @@
+Linko Backend V7 - Offline verification, 2026-10-27
+=================================================
+
+- 34/34 Python unittest tests passed locally.
+- Python modules compile with compileall; OpenAPI contains bearer security scheme.
+- Auth local/oidc fail-closed and role matrix covered by HTTP tests.
+- 7 legacy tables preserved; SQL migration adds/replaces auditing triggers only.
+- No live Oracle Database 23ai available here: Oracle integration, trigger compilation,
+  GRAPH_TABLE step query syntax, response performance, concurrency and load remain
+  UNVERIFIED until tools/doctor.py + smoke tests are run in the target PDB.
+- No production SSO provider configured or tested; no public login endpoint.
+- Docker/CI files are supplied but were not deployed or built on production infra.
+- NOT a production-readiness certification.
+
+Commands:
+  pip install -r requirements-dev.txt
+  python -m unittest discover -s tests -v
+  python tools/doctor.py                 # Oracle required
+  python tools/smoke_http.py            # LINKO_TOKEN required
+  python tools/smoke_crud_v6.py --write # Disposable DB only, Admin LINKO_TOKEN
+
+Start here: README_V7_DEPLOY.md
