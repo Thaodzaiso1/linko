@@ -29,7 +29,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 USE_MOCK = os.getenv("USE_MOCK", "true").lower() in ("1", "true", "yes")
 ORACLE_USER = os.getenv("ORACLE_USER", "system")
-ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD", "OraclePassword123")
+ORACLE_PASSWORD = os.getenv("ORACLE_PASSWORD", "")
 ORACLE_CONNECT = os.getenv("ORACLE_CONNECT_STRING", "localhost:1521/lab04")
 PORT = int(os.getenv("PORT", "8000"))
 SESSION_TTL_SECONDS = max(300, int(os.getenv("SESSION_TTL_SECONDS", "28800")))
@@ -230,7 +230,9 @@ def _init_oracle() -> bool:
         print(f"[Linko] Connected Oracle: {ORACLE_CONNECT}")
         return True
     except Exception as exc:
-        print(f"[Linko] Oracle fail → fallback MOCK: {exc}")
+        if os.getenv("LINKO_STRICT_ORACLE", "false").lower() in ("true", "1", "yes"):
+            raise RuntimeError("Oracle unavailable; refusing mock fallback") from exc
+        print(f"[Linko] Oracle unavailable; DEMO mode: {type(exc).__name__}")
         return False
 
 
@@ -273,6 +275,8 @@ class CreateConnectionRequest(BaseModel):
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not _USERS:
+        raise RuntimeError("Configure LINKO_ADMIN_PASSWORD or enable LINKO_ALLOW_DEMO_USERS")
     _init_oracle()
     from social_api import initialize_social_db
     initialize_social_db()
@@ -433,11 +437,16 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 # ---------------------------------------------------------------------------
 # Auth (demo roles)
 # ---------------------------------------------------------------------------
-_USERS = {
-    "admin": {"password": "admin123", "full_name": "Quản trị hệ thống", "role": "admin"},
-    "manager": {"password": "manager123", "full_name": "Trưởng phòng", "role": "manager"},
-    "viewer": {"password": "viewer123", "full_name": "Nhân viên xem", "role": "viewer"},
-}
+_ALLOW_DEMO_USERS = os.getenv("LINKO_ALLOW_DEMO_USERS", "true" if USE_MOCK else "false").lower() in ("true", "1", "yes")
+_USERS = {}
+if _ALLOW_DEMO_USERS:
+    _USERS.update({
+        "admin": {"password": "admin123", "full_name": "Quản trị hệ thống", "role": "admin"},
+        "manager": {"password": "manager123", "full_name": "Trưởng phòng", "role": "manager"},
+        "viewer": {"password": "viewer123", "full_name": "Nhân viên xem", "role": "viewer"},
+    })
+if os.getenv("LINKO_ADMIN_PASSWORD"):
+    _USERS["admin"] = {"password": os.environ["LINKO_ADMIN_PASSWORD"], "full_name": "Quản trị hệ thống", "role": "admin"}
 _TOKENS: dict[str, tuple[str, float]] = {}  # token -> (username, monotonic expiry)
 _LOGIN_FAILURES: dict[str, list[float]] = {}  # dev-mode brute-force throttle per client address
 LOGIN_MAX_ATTEMPTS = 5
@@ -616,6 +625,7 @@ def health():
         "version": "6.0.0",
         "framework": "FastAPI",
         "oracle_pool": bool(_pool),
+        "demo_mode": not bool(_pool),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -2295,7 +2305,10 @@ def openapi_summary():
 @app.get("/", tags=["System"])
 
 def root():
-    """Landing — chuyển docs."""
+    """SPA landing when frontend bundle is present."""
+    frontend_index = os.path.join(os.getenv("LINKO_FRONTEND_DIST", os.path.join(os.path.dirname(__file__), "dist")), "index.html")
+    if os.path.isfile(frontend_index):
+        return FileResponse(frontend_index)
     return {
         "message": "Linko API v5.0",
         "docs": "/docs",
@@ -2326,3 +2339,16 @@ mount_social_routes(app, _require_social_user, _USERS)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True)
+
+_FRONTEND_DIST = os.getenv("LINKO_FRONTEND_DIST", os.path.join(os.path.dirname(__file__), "dist"))
+if os.path.isfile(os.path.join(_FRONTEND_DIST, "index.html")):
+    @app.get("/{spa_path:path}", include_in_schema=False)
+    def spa_fallback(spa_path: str):
+        from pathlib import Path
+        base = Path(_FRONTEND_DIST).resolve()
+        if spa_path.startswith(("api/", "docs/", "redoc/", "static/")):
+            raise HTTPException(404, "Not found")
+        target = (base / spa_path).resolve()
+        if target.is_relative_to(base) and target.is_file():
+            return FileResponse(target)
+        return FileResponse(base / "index.html")
