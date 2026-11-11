@@ -26,8 +26,8 @@ const LoginArt = memo(function LoginArt() {
 
 function LoginPageInner() {
   const { login } = useAuth();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [visible, setVisible] = useState(false);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ function LoginPageInner() {
           {err && <div className="alert alert-err" role="alert">{err}</div>}
           <button type="submit" className="login-submit" disabled={loading}>{loading?'Đang xác thực…':'Đăng nhập vào Workspace'}<Icon name="arrow" size={18}/></button>
         </form>
-        <div className="login-demo"><div className="login-demo-head"><Icon name="bolt" size={16}/><strong>Trải nghiệm nhanh với tài khoản demo</strong></div><p>Chọn một vai trò để tự động điền thông tin.</p><div className="demo-options">{DEMO.map(d=><button type="button" className={`demo-option${username===d.user?' is-selected':''}`} key={d.user} onClick={()=>{setUsername(d.user);setPassword(d.pass);setErr('')}}><Icon name={d.role==='admin'?'shield':d.role==='manager'?'briefcase':'eye'} size={16}/><span>{ROLE_LABEL[d.role]}</span></button>)}</div><div className="demo-note">Chỉ dành cho môi trường học tập và demo.</div></div>
+        {import.meta.env.DEV && <div className="login-demo"><div className="login-demo-head"><Icon name="bolt" size={16}/><strong>Trải nghiệm nhanh với tài khoản demo</strong></div><p>Chọn một vai trò để tự động điền thông tin.</p><div className="demo-options">{DEMO.map(d=><button type="button" className={`demo-option${username===d.user?' is-selected':''}`} key={d.user} onClick={()=>{setUsername(d.user);setPassword(d.pass);setErr('')}}><Icon name={d.role==='admin'?'shield':d.role==='manager'?'briefcase':'eye'} size={16}/><span>{ROLE_LABEL[d.role]}</span></button>)}</div><div className="demo-note">Chỉ dành cho môi trường học tập và demo.</div></div>}
       </div>
       <div className="login-form-footer">© 2026 Linko Workspace <span>Privacy &amp; Security</span></div>
     </section>
