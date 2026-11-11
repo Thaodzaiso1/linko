@@ -2306,7 +2306,7 @@ def openapi_summary():
 
 def root():
     """SPA landing when frontend bundle is present."""
-    frontend_index = os.path.join(os.getenv("LINKO_FRONTEND_DIST", os.path.join(os.path.dirname(__file__), "dist")), "index.html")
+    frontend_index = os.path.join(os.getenv("LINKO_FRONTEND_DIST", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "linko-static"))), "index.html")
     if os.path.isfile(frontend_index):
         return FileResponse(frontend_index)
     return {
@@ -2331,6 +2331,25 @@ def _require_social_user(request: Request) -> dict:
     return user
 
 mount_social_routes(app, _require_social_user, _USERS)
+
+# Render production: React SPA served by this FastAPI process.
+# Register after API/social routes so existing API endpoints take precedence.
+_WEB_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "linko-static"))
+_ASSETS_DIR = os.path.join(_WEB_DIST, "assets")
+if os.path.isdir(_ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=_ASSETS_DIR), name="web-assets")
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_react_app(full_path: str):
+    if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not os.path.isdir(_WEB_DIST):
+        raise HTTPException(status_code=404, detail="Frontend build missing")
+    requested = os.path.abspath(os.path.join(_WEB_DIST, full_path))
+    if requested.startswith(_WEB_DIST + os.sep) and os.path.isfile(requested):
+        return FileResponse(requested)
+    return FileResponse(os.path.join(_WEB_DIST, "index.html"))
+
 
 
 # ---------------------------------------------------------------------------
