@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: linko-network
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    envVars:
+      - key: USE_MOCK
+        value: "true"
+      - key: LINKO_ALLOW_DEMO_USERS
+        value: "false"
+      - key: LINKO_ADMIN_PASSWORD
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
