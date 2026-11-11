@@ -2306,7 +2306,7 @@ def openapi_summary():
 
 def root():
     """SPA landing when frontend bundle is present."""
-    frontend_index = os.path.join(os.getenv("LINKO_FRONTEND_DIST", os.path.join(os.path.dirname(__file__), "dist")), "index.html")
+    frontend_index = os.path.join(os.getenv("LINKO_FRONTEND_DIST", os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "linko-static"))), "index.html")
     if os.path.isfile(frontend_index):
         return FileResponse(frontend_index)
     return {
